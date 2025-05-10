@@ -6,6 +6,8 @@ function Organization() {
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [adminData, setAdminData] = useState({ username: '', password: '', organizationId: '' });
+  const [orgDetails, setOrgDetails] = useState(null);
+
 
   useEffect(() => {
     fetchOrganizations();
@@ -21,6 +23,18 @@ function Organization() {
       console.error('Error fetching organizations:', error);
     }
   };
+
+  const fetchOrgById = async (orgId) => {
+    try {
+      const res = await axios.get(`http://localhost:3001/api/user/get/organization/${orgId}`, {
+        withCredentials: true,
+      });
+      setOrgDetails(res.data); // <== Fix here
+    } catch (error) {
+      console.error('Error fetching organization by ID:', error);
+    }
+  };
+
 
   const handleCreateOrg = async (e) => {
     e.preventDefault();
@@ -53,7 +67,7 @@ function Organization() {
       console.error('Error creating admin:', err);
     }
   };
-  
+
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
@@ -79,16 +93,25 @@ function Organization() {
         <h2 className="text-xl font-semibold mb-4">All Organizations</h2>
         <ul className="divide-y divide-gray-200">
           {orgs.map((org) => (
-            <li
-              key={org._id}
-              className="py-2 cursor-pointer hover:bg-gray-100 px-2 rounded"
-              onClick={() => {
-                setSelectedOrg(org);
-                setAdminData((prev) => ({ ...prev, organizationId: org._id }));
-              }}
-              
-            >
+            <li key={org._id} className="py-2 px-2 rounded flex justify-between items-center hover:bg-gray-100">
               <span className="font-medium">{org.organization}</span>
+              <div className="space-x-2">
+                <button
+                  onClick={() => {
+                    setSelectedOrg(org);
+                    setAdminData((prev) => ({ ...prev, organizationId: org._id }));
+                  }}
+                  className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                >
+                  Select
+                </button>
+                <button
+                  onClick={() => fetchOrgById(org._id)}
+                  className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
+                >
+                  View
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -107,7 +130,7 @@ function Organization() {
             type="text"
             value={adminData.username}
             placeholder="Username"
-            onChange={(e) => setAdminData({...adminData, username: e.target.value})}
+            onChange={(e) => setAdminData({ ...adminData, username: e.target.value })}
             className="w-full px-3 py-2 border rounded"
             required
           />
@@ -115,7 +138,7 @@ function Organization() {
             type="password"
             value={adminData.password}
             placeholder="Password"
-            onChange={(e) => setAdminData({...adminData, password: e.target.value})}
+            onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
             className="w-full px-3 py-2 border rounded"
             required
           />
@@ -123,6 +146,13 @@ function Organization() {
             Create Admin
           </button>
         </form>
+      )}
+      {orgDetails.orgs && (
+        <div className="bg-white p-4 rounded shadow w-full max-w-2xl mt-6">
+          <h2 className="text-xl font-semibold mb-3 text-blue-600">{ orgDetails.orgs.organization }</h2>
+          <p><strong>Organization Admin:</strong> {orgDetails.admins.length > 0 ? orgDetails.admins.map(a => a.username).join(', ') : 'None'}</p>
+          <p><strong>User Count:</strong> {orgDetails.userCount}</p>
+        </div>
       )}
     </div>
   );
