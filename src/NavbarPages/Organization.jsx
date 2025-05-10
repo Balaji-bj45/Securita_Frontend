@@ -5,42 +5,32 @@ function Organization() {
   const [orgName, setOrgName] = useState('');
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [adminData, setAdminData] = useState({ username: '', password: '', organizationId: '' });
 
-  const token = localStorage.getItem('token'); // get JWT from localStorage
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
 
   const fetchOrganizations = async () => {
     try {
       const res = await axios.get('http://localhost:3001/api/user/organization', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        withCredentials: true,
       });
-      console.error("orgs:", response);
       setOrgs(res.data.orgs);
     } catch (error) {
       console.error('Error fetching organizations:', error);
     }
   };
 
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
-
   const handleCreateOrg = async (e) => {
     e.preventDefault();
-    if (!orgName.trim()) return;
     try {
-      await axios.post(
+      const res = await axios.post(
         'http://localhost:3001/api/user/create/organization',
         { organization: orgName },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { withCredentials: true }
       );
+      //console.log('create orgs:', res);
       setOrgName('');
       fetchOrganizations();
     } catch (err) {
@@ -51,26 +41,19 @@ function Organization() {
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
+      const res = await axios.post(
         'http://localhost:3001/api/user/create/admin',
-        {
-          organizationId: selectedOrg._id,
-          username,
-          password,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        adminData,
+        { withCredentials: true }
       );
-      setUsername('');
-      setPassword('');
+      console.log('creating admin:', res);
       alert('Admin created successfully');
+      setAdminData({ username: '', password: '', organizationId: '' });
     } catch (err) {
       console.error('Error creating admin:', err);
     }
   };
+  
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
@@ -99,7 +82,11 @@ function Organization() {
             <li
               key={org._id}
               className="py-2 cursor-pointer hover:bg-gray-100 px-2 rounded"
-              onClick={() => setSelectedOrg(org)}
+              onClick={() => {
+                setSelectedOrg(org);
+                setAdminData((prev) => ({ ...prev, organizationId: org._id }));
+              }}
+              
             >
               <span className="font-medium">{org.organization}</span>
             </li>
@@ -118,17 +105,19 @@ function Organization() {
           </h2>
           <input
             type="text"
-            value={username}
-            placeholder="Admin Username"
-            onChange={(e) => setUsername(e.target.value)}
+            value={adminData.username}
+            placeholder="Username"
+            onChange={(e) => setAdminData({...adminData, username: e.target.value})}
             className="w-full px-3 py-2 border rounded"
+            required
           />
           <input
             type="password"
-            value={password}
-            placeholder="Admin Password"
-            onChange={(e) => setPassword(e.target.value)}
+            value={adminData.password}
+            placeholder="Password"
+            onChange={(e) => setAdminData({...adminData, password: e.target.value})}
             className="w-full px-3 py-2 border rounded"
+            required
           />
           <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
             Create Admin
