@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 import Navbar from '../Components/Navbar';
-import UserCreateForm from "../Pages/Users";
+import UserCreateForm from "./Users";
 
 const UserListPage = () => {
   const [users, setUsers] = useState([
