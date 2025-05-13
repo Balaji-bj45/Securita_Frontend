@@ -1,24 +1,81 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 
 const UserCreateForm = ({ onClose }) => {
-  const [formData, setFormData] = useState({
+  const [userData, setUserData] = useState({
+    organizationIds: [],
     username: '',
     password: '',
-    fullname: '',
-    role: 'Select Role',
-    phonenumber: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    organization: '',
-    timeZone: '',
-    mfaSecret: '',
-    userType: 'MFAuser', // new field
-    isActive: true,
+    phone: '',
+    mfaEnabled: false
   });
-
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [organization, setOrganization] = useState([]);
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
+
+  const fetchOrganizations = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/user/organization',
+        { withCredentials: true }
+      );
+      setOrganization(response.data.orgs);
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    }
+  };
+
+  const handleUserCreate = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await axios.post(
+        `http://localhost:3001/api/user/create`,
+        {
+          ...userData,
+          mfaEnabled: false, // initially disabled
+        },
+        { withCredentials: true }
+      );
+
+      showToast('User created successfully!');
+
+      if (userData.mfaEnabled) {
+        await axios.get(
+          `http://localhost:3001/api/user/generate-mfa/${response.data.user._id}`,
+          { withCredentials: true }
+        );
+        showToast('MFA enabled for user. User can now set it up.');
+      }
+
+      setUserData({
+        organizationIds: [],
+        username: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        mfaEnabled: false,
+      });
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Something went wrong';
+      showToast(msg, 'error');
+      console.log(error.response);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const showToast = (message, type = 'success') => {
     toast[type](() => (
@@ -54,7 +111,7 @@ const UserCreateForm = ({ onClose }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setUserData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -69,66 +126,24 @@ const UserCreateForm = ({ onClose }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.username.trim()) newErrors.username = 'Username is required';
-    else if (formData.username.length < 3) newErrors.username = 'Min 3 characters';
+    if (!userData.username.trim()) newErrors.username = 'Username is required';
+    else if (userData.username.length < 3) newErrors.username = 'Min 3 characters';
 
-    if (!formData.password) newErrors.password = 'Password is required';
-    else if (formData.password.length < 6) newErrors.password = 'Min 6 characters';
+    if (!userData.password) newErrors.password = 'Password is required';
+    else if (userData.password.length < 6) newErrors.password = 'Min 6 characters';
 
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
-    else if (formData.email !== formData.email.toLowerCase()) newErrors.email = 'Email must be lowercase';
+    if (!userData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) newErrors.email = 'Invalid email';
+    else if (userData.email !== userData.email.toLowerCase()) newErrors.email = 'Email must be lowercase';
 
-    if (!formData.phonenumber.trim()) newErrors.phonenumber = 'Phone number is required';
-    if (!formData.organization.trim()) newErrors.organization = 'Organization is required';
-    if (!formData.fullname.trim()) newErrors.fullname = 'Full name is required';
-    if (formData.role === 'Select Role') newErrors.role = 'Role is required';
+    if (!userData.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (!userData.organizationIds || userData.organizationIds.length === 0) {
+      newErrors.organizationIds = 'At least one organization must be selected';
+    }
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-
-    try {
-      const payload = {
-        ...formData,
-        email: formData.email.toLowerCase(),
-        mfaSecret: formData.mfaSecret || null,
-      };
-
-      await axios.post('http://localhost:5000/api/users', payload, { withCredentials: true });
-      showToast('User created successfully!');
-      setFormData({
-        username: '',
-        password: '',
-        fullname: '',
-        role: 'Select Role',
-        phonenumber: '',
-        email: '',
-        organization: '',
-        timeZone: '',
-        mfaSecret: '',
-        userType: 'MFAuser',
-        isActive: true
-      });
-      setErrors({});
-      setTimeout(onClose, 500);
-    } catch (error) {
-      const msg = error.response?.data?.message;
-      if (msg?.includes('already taken')) {
-        const field = msg.split(' ')[0].toLowerCase();
-        setErrors(prev => ({ ...prev, [field]: msg }));
-        showToast(msg, 'error');
-      } else {
-        showToast(msg || 'Network error occurred', 'error');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
@@ -147,9 +162,9 @@ const UserCreateForm = ({ onClose }) => {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleUserCreate} className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {['fullname', 'username', 'password', 'email', 'phonenumber', 'organization'].map((field) => (
+          {['firstName', 'lastName', 'username', 'password', 'email', 'phone'].map((field) => (
             <div key={field} className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">
                 {field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')}
@@ -158,70 +173,48 @@ const UserCreateForm = ({ onClose }) => {
               <input
                 type={field === 'password' ? 'password' : 'text'}
                 name={field}
-                value={formData[field]}
+                value={userData[field]}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                  errors[field] ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors[field] ? 'border-red-500' : 'border-gray-300'}`}
               />
               {errors[field] && <p className="text-sm text-red-600">{errors[field]}</p>}
             </div>
           ))}
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
-              Role <span className="text-red-500">*</span>
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Organizations</label>
             <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                errors.role ? 'border-red-500' : 'border-gray-300'
-              }`}
+              name="organizationIds"
+              multiple
+              value={userData.organizationIds || []}
+              onChange={(e) => {
+                const selectedOptions = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+                setUserData((prev) => ({ ...prev, organizationIds: selectedOptions }));
+              }}
+              className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="Select Role" disabled>Select Role</option>
-              <option value="SuperAdmin">SuperAdmin</option>
-              <option value="Admin">Admin</option>
-              <option value="User">User</option>
-              <option value="Auditor">Auditor</option>
-              <option value="DataViewer">DataViewer</option>
+              {organization.map((org) => (
+                <option key={org._id} value={org._id}>
+                  {org.organization}
+                </option>
+              ))}
             </select>
-            {errors.role && <p className="text-sm text-red-600">{errors.role}</p>}
+            {errors.organizationIds && (
+              <p className="text-sm text-red-600">{errors.organizationIds}</p>
+            )}
           </div>
+
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Time Zone</label>
-            <select
-              name="timeZone"
-              value={formData.timeZone}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">Select Time Zone</option>
-              <option value="Asia/Kolkata">Asia/Kolkata</option>
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="Europe/London">Europe/London</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-700">MFA Enabled</label>
+            <input
+              type="checkbox"
+              name="mfaEnabled"
+              checked={userData.mfaEnabled}
+              onChange={() => setUserData(prev => ({ ...prev, mfaEnabled: !prev.mfaEnabled }))}
+              className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+            />
           </div>
-
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">User Type <span className="text-red-500">*</span></label>
-            <select
-              name="userType"
-              value={formData.userType}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="NonLDAPuser">NonLDAPuser</option>
-              <option value="LDAPuser">LDAPuser</option>
-            </select>
-          </div>
-
-         
-
-         
         </div>
 
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">

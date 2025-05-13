@@ -26,7 +26,19 @@ function Organization() {
     }
   };
 
-  const handleCreateOrganization = async (e) => {
+  const fetchOrgById = async (orgId) => {
+    try {
+      const res = await axios.get(`http://localhost:3001/api/user/get/organization/${orgId}`, {
+        withCredentials: true,
+      });
+      setOrgDetails(res.data); // <== Fix here
+    } catch (error) {
+      console.error('Error fetching organization by ID:', error);
+    }
+  };
+
+
+  const handleCreateOrg = async (e) => {
     e.preventDefault();
     try {
       const orgRes = await axios.post(
