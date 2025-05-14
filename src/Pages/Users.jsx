@@ -1,6 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+
+const FloatingLabelInput = ({ label, name, value, type = 'text', error, onChange }) => (
+  <div className="relative w-full group">
+    <input
+      type={type}
+      name={name}
+      id={name}
+      value={value}
+      onChange={onChange}
+      className={`peer px-3 pt-5 pb-2 w-full border-b-2 text-sm text-gray-900 bg-transparent appearance-none focus:outline-none focus:ring-0 focus:border-indigo-500 ${
+        error ? 'border-red-500' : 'border-gray-300'
+      }`}
+      placeholder=" "
+    />
+    <label
+      htmlFor={name}
+      className="absolute text-sm text-gray-500 top-2 left-3 scale-75 origin-[0] transform peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-3 peer-focus:scale-75 peer-focus:-translate-y-2 transition-all duration-200"
+    >
+      {label}
+    </label>
+    {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+  </div>
+);
 
 const UserCreateForm = ({ onClose }) => {
   const [userData, setUserData] = useState({
@@ -13,9 +37,13 @@ const UserCreateForm = ({ onClose }) => {
     phone: '',
     mfaEnabled: false
   });
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [organization, setOrganization] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedOrganizations, setSelectedOrganizations] = useState([]);
 
   useEffect(() => {
     fetchOrganizations();
@@ -23,104 +51,62 @@ const UserCreateForm = ({ onClose }) => {
 
   const fetchOrganizations = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/user/organization',
-        { withCredentials: true }
-      );
-      setOrganization(response.data.orgs);
+      const res = await axios.get('http://localhost:3001/api/user/organization', {
+        withCredentials: true
+      });
+      setOrganizations(res.data.orgs);
     } catch (error) {
       console.error('Error fetching organizations:', error);
     }
   };
 
-  const handleUserCreate = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  const filteredOrganizations = organizations.filter((org) =>
+    org.organization.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    setIsSubmitting(true);
-
-    try {
-      const response = await axios.post(
-        `http://localhost:3001/api/user/create`,
-        {
-          ...userData,
-          mfaEnabled: false, // initially disabled
-        },
-        { withCredentials: true }
-      );
-
-      showToast('User created successfully!');
-
-      if (userData.mfaEnabled) {
-        await axios.get(
-          `http://localhost:3001/api/user/generate-mfa/${response.data.user._id}`,
-          { withCredentials: true }
-        );
-        showToast('MFA enabled for user. User can now set it up.');
-      }
-
-      setUserData({
-        organizationIds: [],
-        username: '',
-        password: '',
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        mfaEnabled: false,
-      });
-    } catch (error) {
-      const msg = error.response?.data?.message || 'Something went wrong';
-      showToast(msg, 'error');
-      console.log(error.response);
-    } finally {
-      setIsSubmitting(false);
+  const handleOrganizationSelect = (org) => {
+    const isSelected = userData.organizationIds.includes(org._id);
+    let updatedOrganizations;
+    
+    if (isSelected) {
+      updatedOrganizations = userData.organizationIds.filter(id => id !== org._id);
+    } else {
+      updatedOrganizations = [...userData.organizationIds, org._id];
+    }
+    
+    setUserData(prev => ({ ...prev, organizationIds: updatedOrganizations }));
+    
+    // Update selected organizations for display
+    if (isSelected) {
+      setSelectedOrganizations(prev => prev.filter(o => o._id !== org._id));
+    } else {
+      setSelectedOrganizations(prev => [...prev, org]);
     }
   };
 
-  const showToast = (message, type = 'success') => {
-    toast[type](() => (
-      <div className="flex items-center">
-        {type === 'success' ? (
-          <svg className="w-6 h-6 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <svg className="w-6 h-6 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        )}
-        <span className="font-medium">{message}</span>
-      </div>
-    ), {
-      position: 'top-center',
-      duration: 4000,
-      style: {
-        minWidth: '300px',
-        padding: '16px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        backgroundColor: type === 'success' ? '#f0fdf4' : '#fef2f2',
-        color: '#111827',
-      },
-      iconTheme: {
-        primary: type === 'success' ? '#10b981' : '#ef4444',
-        secondary: '#fff',
-      },
-    });
+  const removeSelectedOrganization = (orgId) => {
+    setUserData(prev => ({
+      ...prev,
+      organizationIds: prev.organizationIds.filter(id => id !== orgId)
+    }));
+    setSelectedOrganizations(prev => prev.filter(org => org._id !== orgId));
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setUserData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (errors[name]) {
-      setErrors(prev => ({
+    const { name, value, type, checked } = e.target;
+    if (name === 'organizationIds') {
+      const updated = checked
+        ? [...userData.organizationIds, value]
+        : userData.organizationIds.filter((id) => id !== value);
+      setUserData((prev) => ({ ...prev, organizationIds: updated }));
+    } else {
+      setUserData((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: type === 'checkbox' ? checked : value
       }));
+      if (errors[name]) {
+        setErrors((prev) => ({ ...prev, [name]: '' }));
+      }
     }
   };
 
@@ -137,108 +123,162 @@ const UserCreateForm = ({ onClose }) => {
     else if (userData.email !== userData.email.toLowerCase()) newErrors.email = 'Email must be lowercase';
 
     if (!userData.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!userData.organizationIds || userData.organizationIds.length === 0) {
-      newErrors.organizationIds = 'At least one organization must be selected';
-    }
 
+    if (!userData.organizationIds.length) newErrors.organizationIds = 'Select at least one organization';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  return (
-    <div className="p-6">
-      <Toaster position="top-center" containerStyle={{ top: '5rem' }} toastOptions={{ style: { minWidth: '300px' } }} />
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
+    setIsSubmitting(true);
+    try {
+      const res = await axios.post(
+        `http://localhost:3001/api/user/create`,
+        { ...userData },
+        { withCredentials: true }
+      );
+
+      toast.success('User created successfully!');
+      setUserData({
+        organizationIds: [],
+        username: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        mfaEnabled: false
+      });
+      
+      onClose(); // Hide modal first
+
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white p-8  max-w-4xl mx-auto">
+      <Toaster />
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-indigo-600">Create New User</h2>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-full hover:bg-gray-100 transition-colors duration-200 text-gray-500 hover:text-gray-700"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        <button onClick={onClose} className="text-gray-600 hover:text-red-500">
+          ✕
         </button>
       </div>
 
-      <form onSubmit={handleUserCreate} className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {['firstName', 'lastName', 'username', 'password', 'email', 'phone'].map((field) => (
-            <div key={field} className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">
-                {field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')}
-                <span className="text-red-500 ms-1">*</span>
-              </label>
-              <input
-                type={field === 'password' ? 'password' : 'text'}
-                name={field}
-                value={userData[field]}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors[field] ? 'border-red-500' : 'border-gray-300'}`}
-              />
-              {errors[field] && <p className="text-sm text-red-600">{errors[field]}</p>}
-            </div>
-          ))}
-
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Organizations</label>
-            <select
-              name="organizationIds"
-              multiple
-              value={userData.organizationIds || []}
-              onChange={(e) => {
-                const selectedOptions = Array.from(e.target.selectedOptions).map((opt) => opt.value);
-                setUserData((prev) => ({ ...prev, organizationIds: selectedOptions }));
-              }}
-              className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {organization.map((org) => (
-                <option key={org._id} value={org._id}>
-                  {org.organization}
-                </option>
-              ))}
-            </select>
-            {errors.organizationIds && (
-              <p className="text-sm text-red-600">{errors.organizationIds}</p>
-            )}
-          </div>
-
-
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">MFA Enabled</label>
-            <input
-              type="checkbox"
-              name="mfaEnabled"
-              checked={userData.mfaEnabled}
-              onChange={() => setUserData(prev => ({ ...prev, mfaEnabled: !prev.mfaEnabled }))}
-              className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid sm:grid-cols-2 gap-10">
+          <FloatingLabelInput label="First Name" name="firstName" value={userData.firstName} onChange={handleChange} error={errors.firstName} />
+          <FloatingLabelInput label="Last Name" name="lastName" value={userData.lastName} onChange={handleChange} error={errors.lastName} />
+          <FloatingLabelInput label="Username" name="username" value={userData.username} onChange={handleChange} error={errors.username} />
+          <FloatingLabelInput label="Password" name="password" type="password" value={userData.password} onChange={handleChange} error={errors.password} />
+          <FloatingLabelInput label="Email" name="email" value={userData.email} onChange={handleChange} error={errors.email} />
+          <FloatingLabelInput label="Phone" name="phone" value={userData.phone} onChange={handleChange} error={errors.phone} />
         </div>
 
-        <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+        <div className="mt-11">
+          <label className="block text-sm font-semibold mb-2 text-gray-700 mt-10">Organizations</label>
+          
+          {/* Selected organizations chips */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {selectedOrganizations.map(org => (
+              <div key={org._id} className="flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
+                {org.organization}
+                <button 
+                  type="button" 
+                  onClick={() => removeSelectedOrganization(org._id)}
+                  className="ml-2 text-indigo-600 hover:text-indigo-900"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          {/* Advanced dropdown with search */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full px-4 py-2 text-left border border-gray-300 rounded-md bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Select Organizations
+            </button>
+            
+            {isDropdownOpen && (
+              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-auto">
+                {/* Search input inside dropdown */}
+                <div className="sticky top-0 bg-white p-2 border-b">
+                  <input
+                    type="text"
+                    placeholder="Search organizations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Organization list */}
+                {filteredOrganizations.length > 0 ? (
+                  filteredOrganizations.map((org) => (
+                    <div
+                      key={org._id}
+                      onClick={() => handleOrganizationSelect(org)}
+                      className={`px-4 py-2 hover:bg-indigo-50 cursor-pointer flex items-center ${
+                        userData.organizationIds.includes(org._id) ? 'bg-indigo-50 text-indigo-700' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={userData.organizationIds.includes(org._id)}
+                        readOnly
+                        className="mr-2 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>{org.organization}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-gray-500">No organizations found</div>
+                )}
+              </div>
+            )}
+          </div>
+          {errors.organizationIds && <p className="text-red-600 text-sm mt-2">{errors.organizationIds}</p>}
+        </div>
+
+        <div className="mt-4 flex items-center">
+          <input
+            type="checkbox"
+            name="mfaEnabled"
+            checked={userData.mfaEnabled}
+            onChange={handleChange}
+            className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+          />
+          <label htmlFor="mfaEnabled" className="ml-2 block text-sm text-gray-700">Enable MFA for this user</label>
+        </div>
+
+        <div className="flex justify-end space-x-4 pt-6 border-t">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-50"
           >
-            {isSubmitting ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating...
-              </span>
-            ) : 'Create User'}
+            {isSubmitting ? 'Creating...' : 'Create User'}
           </button>
         </div>
       </form>

@@ -66,38 +66,28 @@ function Organization() {
     }
   };
 
-  const fetchOrgById = async (orgId) => {
-    try {
-      const res = await axios.get(`http://localhost:3001/api/user/get/organization/${orgId}`, {
-        withCredentials: true,
-      });
-      setOrgDetails(res.data); // <== Fix here
-    } catch (error) {
-      console.error('Error fetching organization by ID:', error);
-    }
-  };
+ const handleCreateOrganization = async (e) => {
+  e.preventDefault();
+  try {
+    setLoading(true);
 
+    const orgRes = await axios.post(
+      'http://localhost:3001/api/user/create/organization',
+      { organization: orgName },
+      { withCredentials: true }
+    );
 
-  const handleCreateOrg = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      await axios.post(
-        'http://localhost:3001/api/user/create/organization',
-        { organization: orgName },
-        { withCredentials: true }
-      );
+    toast.success('Organization created successfully!');
+    setOrgName('');
+    setShowModal(false);
+    await fetchOrganizations();
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Error creating organization');
+  } finally {
+    setLoading(false);
+  }
+};
 
-      toast.success('Organization created successfully!');
-      setOrgName('');
-      setShowModal(false);
-      await fetchOrganizations();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Error creating organization');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddAdmin = async (e) => {
     e.preventDefault();
@@ -308,7 +298,7 @@ function Organization() {
             </>
           )}
           
-          {/* Create Organization Modal (Simplified - Only Organization Name) */}
+          {/* Create Organization Modal */}
           <AnimatePresence>
             {showModal && (
               <motion.div
@@ -353,6 +343,8 @@ function Organization() {
                       />
                     </div>
                     
+                    
+                    
                     <div className="pt-2">
                       <button
                         type="submit"
@@ -368,7 +360,7 @@ function Organization() {
                             Creating...
                           </>
                         ) : (
-                          'Create Organization'
+                          'Create Organization '
                         )}
                       </button>
                     </div>

@@ -15,14 +15,12 @@ const UserListPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/user/get',
-        { withCredentials: true }
-      );
+      const response = await axios.get('http://localhost:3001/api/user/get', {
+        withCredentials: true
+      });
       const activeUsers = response.data.users.filter(user => user.isActive);
-      console.log('successfully fetching users:', response.data);
       setUsers(activeUsers);
     } catch (err) {
-      console.error('Error fetching users:', err);
       alert("Failed to fetch users");
     }
   };
@@ -32,7 +30,6 @@ const UserListPage = () => {
       const response = await axios.get(`http://localhost:3001/api/user/getbyId/${user._id}`, {
         withCredentials: true,
       });
-      console.log("User Details:", response.data.user);
       setSelectedUser(response.data.user);
     } catch (err) {
       console.error("Error fetching user details:", err);
@@ -53,7 +50,7 @@ const UserListPage = () => {
   const filteredUsers = users.filter(user =>
     (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (user.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.organization || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (user.organizations || []).some(org => org.organization.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -104,14 +101,14 @@ const UserListPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.isActive ? 'Active' : 'Deactive'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
                         <button className="text-blue-600 hover:underline" onClick={() => handleView(user)}> View </button>
-                        <button className="text-green-600 hover:underline" onClick={() => handleUpdate(user)}> Update </button>
-                        <button className="text-red-600 hover:underline" onClick={() => handleDeactivate(user)}> Deactivate </button>
+                        <button className="text-green-600 hover:underline" onClick={() => alert('Update functionality to be added')}> Update </button>
+                        <button className="text-red-600 hover:underline" onClick={() => alert('Deactivate functionality to be added')}> Deactivate </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="text-center py-8 text-gray-500">
+                    <td colSpan="6" className="text-center py-8 text-gray-500">
                       <div className="flex flex-col items-center">
                         <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -130,12 +127,23 @@ const UserListPage = () => {
           <div className="mt-6 p-4 border rounded bg-white shadow-md">
             <h2 className="text-lg font-semibold mb-2 text-indigo-700">User Details</h2>
             <p><strong>Username:</strong> {selectedUser.username}</p>
-            <p><strong>Password:</strong> {selectedUser.password}</p>
+            
             <p><strong>First Name:</strong> {selectedUser.firstName}</p>
             <p><strong>Last Name:</strong> {selectedUser.lastName}</p>
             <p><strong>Email:</strong> {selectedUser.email}</p>
             <p><strong>Phone:</strong> {selectedUser.phone}</p>
-            <p><strong>Organization:</strong> {selectedUser.organization?.organization}</p>
+            <div>
+              <strong>Organizations:</strong>
+              <ul className="list-disc list-inside">
+                {selectedUser.organizations?.length > 0 ? (
+                  selectedUser.organizations.map((org) => (
+                    <li key={org._id}>{org.organization}</li>
+                  ))
+                ) : (
+                  <li>N/A</li>
+                )}
+              </ul>
+            </div>
             <p><strong>MFA Enabled:</strong> {selectedUser.mfaEnabled ? 'Yes' : 'No'}</p>
             <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
             <button
