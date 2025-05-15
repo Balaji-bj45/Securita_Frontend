@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-
+//finished
+     
 const FloatingLabelInput = ({ label, name, value, type = 'text', error, onChange }) => (
   <div className="relative w-full group">
     <input
