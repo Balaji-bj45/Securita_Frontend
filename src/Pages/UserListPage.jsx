@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../Components/Navbar';
 import UserCreateForm from "./Users";
 import axios from 'axios';
+import { Eye, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Filter, Building2 } from 'lucide-react'; // Optional icons
 
-const UserListPage = () => { 
+const UserListPage = () => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSidebar, setShowSidebar] = useState(false);
@@ -15,8 +17,13 @@ const UserListPage = () => {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    mfaEnabled:false
+
   });
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [organizationFilter, setOrganizationFilter] = useState('all');
+  const [organizationsList, setOrganizationsList] = useState([]);
 
   useEffect(() => {
     fetchUsers();
@@ -29,6 +36,17 @@ const UserListPage = () => {
       });
       const activeUsers = response.data.users.filter(user => user.isActive !== undefined);
       setUsers(activeUsers);
+
+      // Extract unique organizations for filter dropdown
+      const orgs = new Set();
+      activeUsers.forEach(user => {
+        if (user.organizations) {
+          user.organizations.forEach(org => {
+            orgs.add(org.organization);
+          });
+        }
+      });
+      setOrganizationsList(['all', ...Array.from(orgs).sort()]);
     } catch (err) {
       alert("Failed to fetch users");
     }
@@ -50,11 +68,12 @@ const UserListPage = () => {
     setUserToUpdate(user);
     setUpdateFormData({
       username: user.username || '',
-      password: '', // Password is intentionally left blank for security
+      password: user.password || '',
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       email: user.email || '',
-      phone: user.phone || ''
+      phone: user.phone || '',
+      mfaEnabled: user.mfaEnabled || false
     });
   };
 
@@ -79,18 +98,18 @@ const UserListPage = () => {
   };
 
   const handleUpdateChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setUpdateFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
   const toggleUserStatus = async (user) => {
     const userId = user._id;
     const action = user.isActive ? 'deactivate' : 'activate';
-    const confirmAction = window.confirm(`Are you sure you want to ${action} this user?`);
-    if (!confirmAction) return;
+    // const confirmAction = window.confirm(`Are you sure you want to ${action} this user?`);
+    // if (!confirmAction) return;
 
     try {
       if (user.isActive) {
@@ -103,7 +122,7 @@ const UserListPage = () => {
         });
       }
 
-      alert(`User ${action}d successfully`);
+      // alert(`User ${action}d successfully`);
       fetchUsers();
     } catch (error) {
       console.error(`Failed to ${action} user:`, error);
@@ -121,12 +140,25 @@ const UserListPage = () => {
     document.body.style.overflow = 'auto';
   };
 
-  const filteredUsers = users.filter(user =>
-    (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.organizations || []).some(org => org.organization.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredUsers = users.filter(user => {
+    // Apply status filter
+    if (statusFilter === 'active' && !user.isActive) return false;
+    if (statusFilter === 'inactive' && user.isActive) return false;
+
+    // Apply organization filter
+    if (organizationFilter !== 'all' &&
+      (!user.organizations || !user.organizations.some(org => org.organization === organizationFilter))) {
+      return false;
+    }
+
+    // Apply search term filter
+    return (
+      (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.organizations || []).some(org => org.organization.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  });
 
   return (
     <>
@@ -134,7 +166,7 @@ const UserListPage = () => {
       <div className="relative min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
-            <h1 className="text-2xl font-semibold text-gray-700">User List</h1>
+            <h1 className="text-3xl font-bold text-indigo-600">User List</h1>
             <div className="flex gap-4 w-full sm:w-auto">
               <input
                 type="text"
@@ -150,6 +182,39 @@ const UserListPage = () => {
                 <span>+</span>
                 <span>New User</span>
               </button>
+            </div>
+          </div>
+
+          {/* Filter controls */}
+          <div className="flex flex-wrap gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="statusFilter" className="text-lg font-bold  text-gray-700">Status:</label>
+              <select
+                id="statusFilter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Users</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="organizationFilter" className="text-lg font-bold text-gray-700">Organization:</label>
+              <select
+                id="organizationFilter"
+                value={organizationFilter}
+                onChange={(e) => setOrganizationFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {organizationsList.map(org => (
+                  <option key={org} value={org}>
+                    {org === 'all' ? 'All Organizations' : org}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -173,15 +238,38 @@ const UserListPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.organizations?.map(org => org.organization).join(', ') || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.mfaEnabled ? 'Yes' : 'No'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.isActive ? 'Active' : 'Deactive'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
-                        <button className="text-blue-600 hover:underline" onClick={() => handleView(user)}>View</button>
-                        <button className="text-green-600 hover:underline" onClick={() => handleUpdate(user)}>Update</button>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-3 flex items-center">
+                        {/* View Button with Eye Icon */}
                         <button
-                          className={user.isActive ? 'text-red-600 hover:underline' : 'text-green-600 hover:underline'}
-                          onClick={() => toggleUserStatus(user)}
+                          className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                          onClick={() => handleView(user)}
                         >
-                          {user.isActive ? 'Deactivate' : 'Activate'}
+                          <Eye size={20} />
+                        </button>
+
+                        {/* Edit Button with Pencil Icon */}
+                        <button
+                          className="text-green-600 hover:text-green-800 flex items-center space-x-1"
+                          onClick={() => handleUpdate(user)}
+                        >
+                          <Pencil size={20} />
+                        </button>
+
+                        {/* Toggle Switch for Activate/Deactivate */}
+                        <button
+                          onClick={() => toggleUserStatus(user)}
+                          className="focus:outline-none"
+                        >
+                          {user.isActive ? (
+                            <ToggleRight size={32} className="text-green-500" />
+                          ) : (
+                            <ToggleLeft size={32} className="text-red-500" />
+                          )}
                         </button>
                       </td>
                     </tr>
@@ -193,7 +281,7 @@ const UserListPage = () => {
                         <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <p className="mt-2">No users found matching your search</p>
+                        <p className="mt-2">No users found matching your criteria</p>
                       </div>
                     </td>
                   </tr>
@@ -203,38 +291,79 @@ const UserListPage = () => {
           </div>
         </div>
 
-        {selectedUser && (
-          <div className="mt-6 p-4 border rounded bg-white shadow-md">
-            <h2 className="text-lg font-semibold mb-2 text-indigo-700">User Details</h2>
-            <p><strong>Username:</strong> {selectedUser.username}</p>
-            <p><strong>First Name:</strong> {selectedUser.firstName}</p>
-            <p><strong>Last Name:</strong> {selectedUser.lastName}</p>
-            <p><strong>Email:</strong> {selectedUser.email}</p>
-            <p><strong>Phone:</strong> {selectedUser.phone}</p>
-            <div>
-              <strong>Organizations:</strong>
-              <ul className="list-disc list-inside">
-                {selectedUser.organizations?.length > 0 ? (
-                  selectedUser.organizations.map((org) => (
-                    <li key={org._id}>{org.organization}</li>
-                  ))
-                ) : (
-                  <li>N/A</li>
-                )}
-              </ul>
-            </div>
-            <p><strong>MFA Enabled:</strong> {selectedUser.mfaEnabled ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
-            <button
-              className="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-              onClick={() => setSelectedUser(null)}
-            >
-              Close
-            </button>
-          </div>
-        )}
+       {selectedUser && (
+  <>
+    {/* Overlay backdrop */}
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
+      onClick={() => setSelectedUser(null)} // close on backdrop click
+    />
 
-        {/* Update User Modal */}
+    {/* Modal container */}
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 px-4"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="modal-title"
+      aria-describedby="modal-description"
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6 animate-fadeIn">
+        <h2
+          id="modal-title"
+          className="text-2xl font-bold text-indigo-700 mb-4"
+        >
+          User Details
+        </h2>
+
+        <div id="modal-description" className="space-y-2 text-gray-700">
+          <p><strong>Username:</strong> {selectedUser.username}</p>
+          <p><strong>First Name:</strong> {selectedUser.firstName}</p>
+          <p><strong>Last Name:</strong> {selectedUser.lastName}</p>
+          <p><strong>Email:</strong> {selectedUser.email}</p>
+          <p><strong>Phone:</strong> {selectedUser.phone}</p>
+
+          <div>
+            <strong>Organizations:</strong>
+            <ul className="list-disc list-inside ml-4">
+              {selectedUser.organizations?.length > 0 ? (
+                selectedUser.organizations.map((org) => (
+                  <li key={org._id}>{org.organization}</li>
+                ))
+              ) : (
+                <li>N/A</li>
+              )}
+            </ul>
+            
+          </div>
+
+          <p><strong>MFA Enabled:</strong> {selectedUser.mfaEnabled ? 'Yes' : 'No'}</p>
+          <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
+          
+        </div>
+
+        <button
+          onClick={() => setSelectedUser(null)}
+          className="mt-6 inline-flex justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+
+    {/* Optional keyframes for fadeIn animation */}
+    <style jsx>{`
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.25s ease forwards;
+      }
+    `}</style>
+  </>
+)}
+
+
         {userToUpdate && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -305,6 +434,17 @@ const UserListPage = () => {
                     required
                   />
                 </div>
+                <div className="mb-4">
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="mfaEnabled"
+                      checked={updateFormData.mfaEnabled}
+                      onChange={handleUpdateChange}
+                    />
+                    Enable MFA
+                  </label>
+                </div>
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
@@ -325,21 +465,22 @@ const UserListPage = () => {
           </div>
         )}
 
-        {/* New User Sidebar */}
-        <div className={`fixed inset-0 z-50 transition-all duration-300 ${showSidebar ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-          <div
-            className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${showSidebar ? 'opacity-100' : 'opacity-0'}`}
-            onClick={handleCloseSidebar}
-          />
-          <div
-            className={`absolute right-0 top-0 h-full bg-white w-full sm:w-[600px] shadow-xl transform transition-all duration-300 ease-in-out ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="h-[calc(100%-64px)] overflow-y-auto">
-              <UserCreateForm onClose={handleCloseSidebar} />
+        {showSidebar && (
+          <div className="fixed inset-0 z-50 transition-all duration-300 opacity-100 visible">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 opacity-100"
+              onClick={handleCloseSidebar}
+            />
+            <div
+              className="absolute right-0 top-0 h-full bg-white w-full sm:w-[600px] shadow-xl transform transition-all duration-300 ease-in-out translate-x-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-[calc(100%-64px)] overflow-y-auto">
+                <UserCreateForm onClose={handleCloseSidebar} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

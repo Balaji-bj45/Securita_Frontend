@@ -90,27 +90,6 @@ function Organization() {
     }
   };
 
-  const handleAddAdmin = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      await axios.post(
-        'http://localhost:3001/api/user/create/admin',
-        { ...adminData, organizationId: selectedOrgForAdmin },
-        { withCredentials: true }
-      );
-
-      toast.success('Admin created successfully!');
-      setAdminData({ username: '', password: '' });
-      setShowAddAdminModal(false);
-      await fetchOrganizations();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Error creating admin');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleViewClick = async (orgId) => {
     try {
       const res = await axios.get(`http://localhost:3001/api/user/get/organization/${orgId}`, {
@@ -123,6 +102,7 @@ function Organization() {
         _id: orgId,
         name: orgs.organization,
         userCount,
+        admins,
         adminUsername: admins.length > 0
           ? admins.map(admin => admin.username).join(', ')
           : 'N/A',
@@ -150,23 +130,24 @@ function Organization() {
     }
   };
 
-  const handleRemoveAdmin = async (organizationId, userId) => {
-    try {
-      const res = await axios.post(
-        'http://localhost:3001/api/user/remove/admin',
-        {
-          organizationId,
-          userId,
-        },
-        { withCredentials: true }
-      );
+  const handleRemoveAdmin = async (organizationId, userId, username) => {
+    if (window.confirm(`Are you sure you want to remove ${username} as admin?`)) {
+      try {
+        const res = await axios.post(
+          'http://localhost:3001/api/user/remove/admin',
+          {
+            organizationId,
+            userId,
+          },
+          { withCredentials: true }
+        );
 
-      toast.success(res.data.message || 'Admin removed successfully');
-
-      handleViewClick(organizationId);
-    } catch (error) {
-      console.error('Error removing admin:', error);
-      toast.error('Failed to remove admin');
+        toast.success(res.data.message || 'Admin removed successfully');
+        handleViewClick(organizationId);
+      } catch (error) {
+        console.error('Error removing admin:', error);
+        toast.error('Failed to remove admin');
+      }
     }
   };
 
@@ -182,14 +163,15 @@ function Organization() {
       );
 
       toast.success(res.data.message || "Admin assigned successfully");
-
       setShowAddAdminModal(false);
+      if (selectedOrg) {
+        handleViewClick(selectedOrg._id);
+      }
     } catch (error) {
       console.error(error);
       toast.error(error.response?.data?.message || "Failed to assign admin");
     }
   };
-
 
   const toggleOrgStatus = async (orgId, currentStatus) => {
     try {
@@ -200,6 +182,9 @@ function Organization() {
       );
       toast.success(`Organization ${currentStatus ? 'deactivated' : 'activated'} successfully`);
       fetchOrganizations();
+      if (selectedOrg && selectedOrg._id === orgId) {
+        setSelectedOrg({ ...selectedOrg, isActive: !currentStatus });
+      }
     } catch (error) {
       toast.error('Failed to update organization status');
     }
@@ -480,20 +465,6 @@ function Organization() {
             )}
           </AnimatePresence>
 
-
-          {admins.map((admin) => (
-            <div key={admin._id} className="flex justify-between items-center p-2 border rounded-lg bg-gray-50">
-              <p className="text-gray-800 font-medium">{admin.username}</p>
-              <button
-                onClick={() => handleRemoveAdmin(org._id, admin._id)}
-                className="text-red-600 hover:text-red-800 text-sm font-medium"
-              >
-                Remove Admin
-              </button>
-            </div>
-          ))}
-
-
           {/* Organization Details Modal */}
           <AnimatePresence>
             {selectedOrg && (
@@ -504,7 +475,7 @@ function Organization() {
                 exit={{ opacity: 0 }}
               >
                 <motion.div
-                  className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-sm relative"
+                  className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-md relative"
                   initial={{ scale: 0.9, y: 20 }}
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0.9, y: 20 }}
@@ -530,8 +501,8 @@ function Organization() {
                     </div>
 
                     <div className="flex items-start">
-                      <div className="w-32 text-sm font-medium text-gray-500">Admin</div>
-                      <div className="flex-1 text-gray-800">{selectedOrg.adminUsername}</div>
+                      <div className="w-32 text-sm font-medium text-gray-500">Created</div>
+                      <div className="flex-1 text-gray-800">{selectedOrg.createdAt}</div>
                     </div>
 
                     <div className="flex items-start">
@@ -540,16 +511,32 @@ function Organization() {
                     </div>
 
                     <div className="flex items-start">
-                      <div className="w-32 text-sm font-medium text-gray-500">Created</div>
-                      <div className="flex-1 text-gray-800">{selectedOrg.createdAt}</div>
-                    </div>
-
-                    <div className="flex items-start">
                       <div className="w-32 text-sm font-medium text-gray-500">Status</div>
                       <div className="flex-1">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedOrg.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                           {selectedOrg.isActive ? 'Active' : 'Inactive'}
                         </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <div className="w-full text-sm font-medium text-gray-500 mb-2">Admins</div>
+                      <div className="space-y-2">
+                        {selectedOrg.admins && selectedOrg.admins.length > 0 ? (
+                          selectedOrg.admins.map((admin) => (
+                            <div key={admin._id} className="flex justify-between items-center p-2 border rounded-lg bg-gray-50">
+                              <p className="text-gray-800 font-medium">{admin.username}</p>
+                              <button
+                                onClick={() => handleRemoveAdmin(selectedOrg._id, admin._id, admin.username)}
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                              >
+                                Remove Admin
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm">No admins assigned</p>
+                        )}
                       </div>
                     </div>
                   </div>
