@@ -11,6 +11,7 @@ import History from "./Pages/History";
 import GroupsData from "./NavbarPages/GroupsData";
 import Organization from "./NavbarPages/Organization";
 import ScanQrPage from "./Pages/ScanQrPage";
+import MfaPage from "./Pages/MfaPage";
 
 const App = () => {
   return (
@@ -18,6 +19,7 @@ const App = () => {
       <Routes>
         {/* Default Route */}
         <Route path="*" element={<LoginPage />} />
+        <Route path="mfaPage" element={<MfaPage/>} />
 
         {/* Other Routes */}
         <Route path="/home-page" element={<MainComp />} />

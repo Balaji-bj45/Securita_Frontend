@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Plus, X, Search, Users, Shield, Activity, ChevronRight } from 'lucide-react';
+import { Eye, Plus, X, Search, Users, Shield, ChevronRight } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import Navbar from '../Components/Navbar';
 import Skeleton from 'react-loading-skeleton';
@@ -26,7 +26,6 @@ function Organization() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFetching, setIsFetching] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [selectedOrgForAdmin, setSelectedOrgForAdmin] = useState(null);
   const [users, setUsers] = useState([]);
@@ -45,14 +44,8 @@ function Organization() {
       );
     }
 
-    if (activeTab === 'active') {
-      result = result.filter(org => org.isActive);
-    } else if (activeTab === 'inactive') {
-      result = result.filter(org => !org.isActive);
-    }
-
     setFilteredOrgs(result);
-  }, [searchTerm, orgs, activeTab]);
+  }, [searchTerm, orgs]);
 
   const fetchOrganizations = async () => {
     try {
@@ -107,7 +100,6 @@ function Organization() {
           ? admins.map(admin => admin.username).join(', ')
           : 'N/A',
         createdAt: new Date(orgs.createdAt).toLocaleDateString(),
-        isActive: orgs.isActive
       });
     } catch (error) {
       toast.error('Error fetching organization details');
@@ -173,23 +165,6 @@ function Organization() {
     }
   };
 
-  const toggleOrgStatus = async (orgId, currentStatus) => {
-    try {
-      await axios.patch(
-        `http://localhost:3001/api/user/organization/${orgId}/status`,
-        { isActive: !currentStatus },
-        { withCredentials: true }
-      );
-      toast.success(`Organization ${currentStatus ? 'deactivated' : 'activated'} successfully`);
-      fetchOrganizations();
-      if (selectedOrg && selectedOrg._id === orgId) {
-        setSelectedOrg({ ...selectedOrg, isActive: !currentStatus });
-      }
-    } catch (error) {
-      toast.error('Failed to update organization status');
-    }
-  };
-
   return (
     <>
       <Navbar />
@@ -233,28 +208,6 @@ function Organization() {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex border-b border-gray-200 mb-8">
-            <button
-              className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-              onClick={() => setActiveTab('all')}
-            >
-              All Organizations
-            </button>
-            <button
-              className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'active' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-              onClick={() => setActiveTab('active')}
-            >
-              <Activity size={16} color='blue' /> Active
-            </button>
-            <button
-              className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'inactive' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-              onClick={() => setActiveTab('inactive')}
-            >
-              <X size={16} color='red' /> Inactive
-            </button>
           </div>
 
           {/* Organization Grid */}
@@ -303,12 +256,6 @@ function Organization() {
                     whileHover={{ y: -4 }}
                     className={`p-6 rounded-xl border ${colorPalette[i % colorPalette.length].border} ${colorPalette[i % colorPalette.length].bg} shadow-sm hover:shadow-md transition-all duration-200 relative overflow-hidden`}
                   >
-                    <div className="absolute top-4 right-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${org.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {org.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-
                     <h2 className="text-xl font-semibold text-gray-800 mb-1">{org.organization}</h2>
                     <p className="text-sm text-gray-500 mb-4">Created: {new Date(org.createdAt).toLocaleDateString()}</p>
 
@@ -326,13 +273,6 @@ function Organization() {
                         className="text-purple-600 hover:text-purple-800 inline-flex items-center gap-1.5 font-medium text-sm group"
                       >
                         Add Admin
-                      </button>
-
-                      <button
-                        onClick={() => toggleOrgStatus(org._id, org.isActive)}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium ${org.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                      >
-                        {org.isActive ? 'Deactivate' : 'Activate'}
                       </button>
                     </div>
                   </motion.div>
@@ -393,14 +333,14 @@ function Organization() {
                       >
                         {loading ? (
                           <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spinner -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             Creating...
                           </>
                         ) : (
-                          'Create Organization '
+                          'Create Organization'
                         )}
                       </button>
                     </div>
@@ -510,15 +450,6 @@ function Organization() {
                       <div className="flex-1 text-gray-800">{selectedOrg.userCount}</div>
                     </div>
 
-                    <div className="flex items-start">
-                      <div className="w-32 text-sm font-medium text-gray-500">Status</div>
-                      <div className="flex-1">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedOrg.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {selectedOrg.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-
                     <div className="flex flex-col">
                       <div className="w-full text-sm font-medium text-gray-500 mb-2">Admins</div>
                       <div className="space-y-2">
@@ -551,12 +482,6 @@ function Organization() {
                       className="w-full py-2.5 rounded-lg font-medium bg-purple-50 text-purple-600 hover:bg-purple-100"
                     >
                       Add Admin
-                    </button>
-                    <button
-                      onClick={() => toggleOrgStatus(selectedOrg._id, selectedOrg.isActive)}
-                      className={`w-full py-2.5 rounded-lg font-medium ${selectedOrg.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                    >
-                      {selectedOrg.isActive ? 'Deactivate Organization' : 'Activate Organization'}
                     </button>
                   </div>
                 </motion.div>

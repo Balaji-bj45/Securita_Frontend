@@ -12,8 +12,13 @@ function Group() {
   const [editingGroupIndex, setEditingGroupIndex] = useState(null);
   const [editGroupName, setEditGroupName] = useState('');
   const [groupToDelete, setGroupToDelete] = useState(null);
+  const [organizations, setOrganizations] = useState([
+    { name: 'Sundaram Finance', users: ['Balaji', 'Akash'] },
+    { name: 'Sriram Finance', users: ['Vishnu', 'Priya'] },
+    { name: 'ZOHO', users: ['Charlie', 'Catherine'] },
+  ]);
+  const [selectedOrg, setSelectedOrg] = useState('');
 
-  // Load groups from localStorage on component mount
   useEffect(() => {
     const savedGroups = localStorage.getItem('groups');
     if (savedGroups) {
@@ -21,19 +26,23 @@ function Group() {
     }
   }, []);
 
-  // Save groups to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('groups', JSON.stringify(groups));
   }, [groups]);
 
   const createGroup = () => {
-    if (!groupName.trim()) return;
-    setGroups([...groups, { 
-      name: groupName, 
-      users: [],
-      createdAt: new Date().toISOString()
-    }]);
+    if (!groupName.trim() || !selectedOrg) return;
+    setGroups([
+      ...groups,
+      {
+        name: groupName,
+        organization: selectedOrg,
+        users: [],
+        createdAt: new Date().toISOString(),
+      },
+    ]);
     setGroupName('');
+    setSelectedOrg('');
   };
 
   const addUserToGroup = () => {
@@ -41,7 +50,7 @@ function Group() {
     const updatedGroups = [...groups];
     updatedGroups[activeGroupIndex].users.push({
       name: userName,
-      joinedAt: new Date().toISOString()
+      joinedAt: new Date().toISOString(),
     });
     setGroups(updatedGroups);
     setUserName('');
@@ -73,9 +82,12 @@ function Group() {
     setGroups(updatedGroups);
   };
 
-  const filteredGroups = groups.filter(group => 
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.users.some(user => user.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredGroups = groups.filter(
+    (group) =>
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.users.some((user) =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
   );
 
   return (
@@ -89,8 +101,8 @@ function Group() {
               <h1 className="text-3xl font-bold text-gray-800">Group Management</h1>
               <p className="text-gray-600">Create and manage your groups</p>
             </div>
-            
-            {/* Search bar */}
+
+            {/* Search */}
             <div className="relative w-full md:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FiSearch className="text-gray-400" />
@@ -105,8 +117,8 @@ function Group() {
             </div>
           </div>
 
-          {/* Group creation section */}
-          <motion.div 
+          {/* Create Group */}
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -114,33 +126,52 @@ function Group() {
           >
             <h2 className="text-xl font-semibold mb-4 text-gray-800">Create New Group</h2>
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-              <div className="w-full sm:w-1/2">
-                <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="w-full sm:w-1/3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Organization
+                </label>
+                <select
+                  value={selectedOrg}
+                  onChange={(e) => setSelectedOrg(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">-- Select --</option>
+                  {organizations.map((org, idx) => (
+                    <option key={idx} value={org.name}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-full sm:w-1/3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Group Name
                 </label>
                 <input
-                  id="groupName"
                   type="text"
                   placeholder="Enter group name"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   onKeyPress={(e) => e.key === 'Enter' && createGroup()}
+                  className="px-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+
               <button
                 onClick={createGroup}
-                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg"
+                disabled={!selectedOrg || !groupName.trim()}
+                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
               >
                 <FiPlus /> Create Group
               </button>
             </div>
           </motion.div>
 
-          {/* Groups display section */}
+          {/* Group Cards */}
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-800">Your Groups ({filteredGroups.length})</h2>
-            
+
             {filteredGroups.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -167,15 +198,14 @@ function Group() {
                       className="border border-gray-200 rounded-xl shadow-sm bg-white overflow-hidden hover:shadow-md transition-shadow"
                     >
                       <div className="p-5 space-y-4">
-                        {/* Group header */}
                         <div className="flex justify-between items-start">
                           {editingGroupIndex === index ? (
                             <input
                               type="text"
                               value={editGroupName}
                               onChange={(e) => setEditGroupName(e.target.value)}
-                              className="px-3 py-1 border border-gray-300 rounded-md font-semibold text-lg"
                               onKeyPress={(e) => e.key === 'Enter' && saveEditedGroup()}
+                              className="px-3 py-1 border border-gray-300 rounded-md font-semibold text-lg"
                             />
                           ) : (
                             <h2 className="text-xl font-semibold text-gray-800 truncate max-w-[180px]">
@@ -184,15 +214,13 @@ function Group() {
                           )}
                           <div className="flex gap-2">
                             {editingGroupIndex === index ? (
-                              <>
-                                <button
-                                  onClick={saveEditedGroup}
-                                  className="text-green-600 hover:text-green-800 p-1"
-                                  title="Save"
-                                >
-                                  <FiX className="transform rotate-45" />
-                                </button>
-                              </>
+                              <button
+                                onClick={saveEditedGroup}
+                                className="text-green-600 hover:text-green-800 p-1"
+                                title="Save"
+                              >
+                                <FiX className="transform rotate-45" />
+                              </button>
                             ) : (
                               <>
                                 <button
@@ -214,75 +242,64 @@ function Group() {
                           </div>
                         </div>
 
-                        {/* Users section */}
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-gray-700 flex items-center gap-2">
-                              <FiUsers /> Members ({group.users.length})
-                            </h3>
-                            <button
-                              onClick={() => 
-                                activeGroupIndex === index 
-                                  ? setActiveGroupIndex(null) 
-                                  : setActiveGroupIndex(index)
-                              }
-                              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                            >
-                              <FiPlus size={14} /> 
-                              {activeGroupIndex === index ? 'Cancel' : 'Add'}
-                            </button>
-                          </div>
+                        <p className="text-sm text-gray-500">
+                          Organization: <span className="font-medium text-gray-700">{group.organization}</span>
+                        </p>
 
-                          {group.users.length > 0 ? (
-                            <ul className="divide-y divide-gray-100">
-                              {group.users.map((user, idx) => (
-                                <li key={idx} className="py-2 flex justify-between items-center">
-                                  <span className="text-gray-700">{user.name}</span>
-                                  <button
-                                    onClick={() => removeUser(index, idx)}
-                                    className="text-red-500 hover:text-red-700 p-1"
-                                  >
-                                    <FiX size={16} />
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
+                        {/* Users */}
+                        <div className="space-y-1">
+                          {group.users.length === 0 ? (
+                            <p className="text-gray-400 italic text-sm">No users in this group</p>
                           ) : (
-                            <p className="text-sm text-gray-500 italic">No members yet</p>
+                            group.users.map((user, userIndex) => (
+                              <div
+                                key={user.name + userIndex}
+                                className="flex justify-between items-center text-sm border border-gray-100 rounded px-2 py-1 bg-gray-50"
+                              >
+                                <span className="text-gray-800">{user.name}</span>
+                                <button
+                                  onClick={() => removeUser(index, userIndex)}
+                                  className="text-red-400 hover:text-red-600"
+                                >
+                                  <FiX />
+                                </button>
+                              </div>
+                            ))
                           )}
                         </div>
 
-                        {/* Add user form */}
-                        {activeGroupIndex === index && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="space-y-2 pt-2 border-t border-gray-100"
-                          >
-                            <input
-                              type="text"
-                              placeholder="Enter user name"
+                        {/* Add User */}
+                        {activeGroupIndex === index ? (
+                          <div className="flex items-center gap-2 mt-3">
+                            <select
                               value={userName}
                               onChange={(e) => setUserName(e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              onKeyPress={(e) => e.key === 'Enter' && addUserToGroup()}
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={addUserToGroup}
-                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition flex items-center justify-center gap-2"
-                              >
-                                <FiPlus size={16} /> Add User
-                              </button>
-                              <button
-                                onClick={() => setActiveGroupIndex(null)}
-                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </motion.div>
+                              className="px-3 py-2 border border-gray-300 rounded-md w-full"
+                            >
+                              <option value="">-- Select user --</option>
+                              {organizations
+                                .find((org) => org.name === group.organization)
+                                ?.users.filter((orgUser) => !group.users.some((gUser) => gUser.name === orgUser))
+                                .map((orgUser, idx) => (
+                                  <option key={idx} value={orgUser}>
+                                    {orgUser}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              onClick={addUserToGroup}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setActiveGroupIndex(index)}
+                            className="mt-3 text-sm text-blue-600 hover:underline"
+                          >
+                            + Add User
+                          </button>
                         )}
                       </div>
                     </motion.div>
@@ -292,40 +309,43 @@ function Group() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Delete confirmation overlay */}
+      {/* Delete Modal */}
+      <AnimatePresence>
         {groupToDelete !== null && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full"
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
             >
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Group</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete "{groups[groupToDelete]?.name}" group? This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-3">
+              <h3 className="text-lg font-semibold text-gray-800">Delete Group</h3>
+              <p className="text-gray-600 mt-2">Are you sure you want to delete this group?</p>
+              <div className="mt-4 flex justify-end gap-3">
                 <button
                   onClick={() => setGroupToDelete(null)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                  className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    deleteGroup(groupToDelete);
-                    setGroupToDelete(null);
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  onClick={() => deleteGroup(groupToDelete)}
+                  className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
                 >
                   Delete
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </>
   );
 }

@@ -18,7 +18,7 @@ const UserListPage = () => {
     lastName: '',
     email: '',
     phone: '',
-    mfaEnabled:false
+    mfaEnabled: false
 
   });
   const [statusFilter, setStatusFilter] = useState('all');
@@ -225,7 +225,7 @@ const UserListPage = () => {
                   <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider">Username</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider">Organization</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider">MFA Enable</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider it">MFA brEnable</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider">Active status</th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-white uppercase tracking-wider">Action</th>
                 </tr>
@@ -235,7 +235,26 @@ const UserListPage = () => {
                   filteredUsers.map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.username}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.organizations?.map(org => org.organization).join(', ') || 'N/A'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {user.organizations?.length > 0 ? (
+                          <div className="relative group cursor-pointer w-fit">
+                            <span className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                              {user.organizations.length} organizations
+                            </span>
+                            
+                            <div className="absolute z-10 hidden group-hover:block bg-white shadow-md border rounded-md p-2 w-48 top-full left-0 mt-1">
+                              {user.organizations.map((org, idx) => (
+                                <div key={idx} className="text-sm text-gray-950 py-0.5 border-b last:border-b-0">
+                                  {org.organization}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          'N/A'
+                        )}
+                      </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.mfaEnabled ? 'Yes' : 'No'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -291,67 +310,67 @@ const UserListPage = () => {
           </div>
         </div>
 
-       {selectedUser && (
-  <>
-    {/* Overlay backdrop */}
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
-      onClick={() => setSelectedUser(null)} // close on backdrop click
-    />
+        {selectedUser && (
+          <>
+            {/* Overlay backdrop */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
+              onClick={() => setSelectedUser(null)} // close on backdrop click
+            />
 
-    {/* Modal container */}
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50 px-4"
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby="modal-title"
-      aria-describedby="modal-description"
-    >
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6 animate-fadeIn">
-        <h2
-          id="modal-title"
-          className="text-2xl font-bold text-indigo-700 mb-4"
-        >
-          User Details
-        </h2>
+            {/* Modal container */}
+            <div
+              className="fixed inset-0 flex items-center justify-center z-50 px-4"
+              aria-modal="true"
+              role="dialog"
+              aria-labelledby="modal-title"
+              aria-describedby="modal-description"
+            >
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6 animate-fadeIn">
+                <h2
+                  id="modal-title"
+                  className="text-2xl font-bold text-indigo-700 mb-4"
+                >
+                  User Details
+                </h2>
 
-        <div id="modal-description" className="space-y-2 text-gray-700">
-          <p><strong>Username:</strong> {selectedUser.username}</p>
-          <p><strong>First Name:</strong> {selectedUser.firstName}</p>
-          <p><strong>Last Name:</strong> {selectedUser.lastName}</p>
-          <p><strong>Email:</strong> {selectedUser.email}</p>
-          <p><strong>Phone:</strong> {selectedUser.phone}</p>
+                <div id="modal-description" className="space-y-2 text-gray-700">
+                  <p><strong>Username:</strong> {selectedUser.username}</p>
+                  <p><strong>First Name:</strong> {selectedUser.firstName}</p>
+                  <p><strong>Last Name:</strong> {selectedUser.lastName}</p>
+                  <p><strong>Email:</strong> {selectedUser.email}</p>
+                  <p><strong>Phone:</strong> {selectedUser.phone}</p>
 
-          <div>
-            <strong>Organizations:</strong>
-            <ul className="list-disc list-inside ml-4">
-              {selectedUser.organizations?.length > 0 ? (
-                selectedUser.organizations.map((org) => (
-                  <li key={org._id}>{org.organization}</li>
-                ))
-              ) : (
-                <li>N/A</li>
-              )}
-            </ul>
-            
-          </div>
+                  <div>
+                    <strong>Organizations:</strong>
+                    <ul className="list-disc list-inside ml-4">
+                      {selectedUser.organizations?.length > 0 ? (
+                        selectedUser.organizations.map((org) => (
+                          <li key={org._id}>{org.organization}</li>
+                        ))
+                      ) : (
+                        <li>N/A</li>
+                      )}
+                    </ul>
 
-          <p><strong>MFA Enabled:</strong> {selectedUser.mfaEnabled ? 'Yes' : 'No'}</p>
-          <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
-          
-        </div>
+                  </div>
 
-        <button
-          onClick={() => setSelectedUser(null)}
-          className="mt-6 inline-flex justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          Close
-        </button>
-      </div>
-    </div>
+                  <p><strong>MFA Enabled:</strong> {selectedUser.mfaEnabled ? 'Yes' : 'No'}</p>
+                  <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
 
-    {/* Optional keyframes for fadeIn animation */}
-    <style jsx>{`
+                </div>
+
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="mt-6 inline-flex justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {/* Optional keyframes for fadeIn animation */}
+            <style jsx>{`
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -360,8 +379,8 @@ const UserListPage = () => {
         animation: fadeIn 0.25s ease forwards;
       }
     `}</style>
-  </>
-)}
+          </>
+        )}
 
 
         {userToUpdate && (
@@ -380,7 +399,7 @@ const UserListPage = () => {
                     required
                   />
                 </div>
-                <div className="mb-4">
+                {/* <div className="mb-4">
                   <label className="block text-gray-700 mb-2">Password (leave blank to keep current)</label>
                   <input
                     type="password"
@@ -389,7 +408,7 @@ const UserListPage = () => {
                     onChange={handleUpdateChange}
                     className="w-full px-3 py-2 border rounded"
                   />
-                </div>
+                </div> */}
                 <div className="mb-4">
                   <label className="block text-gray-700 mb-2">First Name</label>
                   <input
@@ -465,22 +484,22 @@ const UserListPage = () => {
           </div>
         )}
 
-        {showSidebar && (
-          <div className="fixed inset-0 z-50 transition-all duration-300 opacity-100 visible">
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 opacity-100"
-              onClick={handleCloseSidebar}
-            />
-            <div
-              className="absolute right-0 top-0 h-full bg-white w-full sm:w-[600px] shadow-xl transform transition-all duration-300 ease-in-out translate-x-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="h-[calc(100%-64px)] overflow-y-auto">
-                <UserCreateForm onClose={handleCloseSidebar} />
-              </div>
-            </div>
-          </div>
-        )}
+      {showSidebar && (
+  <div className="fixed inset-0 z-50 overflow-hidden">
+    <div
+      className={`absolute inset-0 bg-black/50 backdrop-blur-sm fade-in`}
+      onClick={handleCloseSidebar}
+    />
+    
+    <div className={`fixed inset-y-0 right-0 w-full sm:w-[500px] slide-in-right`}>
+      <div className="h-full flex flex-col bg-white shadow-xl">
+        <div className="h-[calc(100%-64px)] overflow-y-auto">
+          <UserCreateForm onClose={handleCloseSidebar} />
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </>
   );
