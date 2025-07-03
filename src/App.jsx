@@ -10,6 +10,7 @@ import ActiveSessions from "./Pages/ActiveSessions";
 import History from "./Pages/History";
 import GroupsData from "./NavbarPages/GroupsData";
 import Organization from "./NavbarPages/Organization";
+import ScanQrPage from "./Pages/ScanQrPage";
 
 const App = () => {
   return (
@@ -23,15 +24,20 @@ const App = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/Users" element={<UserListPage />} />
-        
+        <Route path="/mfa-verify/:userId" element={<ScanQrPage />} />
+
+
         {/* Corrected Route for /create-user */}
         <Route path="/create-user" element={<Users />} />
-        <Route path="/Active-Sessions" element={<ActiveSessions/>} />
-        <Route path="/History" element={<History/>} />
-        <Route path="/Groups" element={<GroupsData/>} />
-        <Route path="/Organization" element={<Organization/>} />
+        <Route path="/Active-Sessions" element={<ActiveSessions />} />
+        <Route path="/History" element={<History />} />
+        <Route path="/Groups" element={<GroupsData />} />
+        <Route path="/Organization" element={<Organization />} />
 
-        <Route path="/reset-password/:id/:token" element={<ResetPasswordPage />} />
+        <Route
+          path="/reset-password/:id/:token"
+          element={<ResetPasswordPage />}
+        />
       </Routes>
     </Router>
   );
