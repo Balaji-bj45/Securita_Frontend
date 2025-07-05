@@ -11,6 +11,7 @@ import History from "./Pages/History";
 import GroupsData from "./NavbarPages/GroupsData";
 import Organization from "./NavbarPages/Organization";
 import MfaPage from "./Pages/MfaPage";
+import Connections from "./NavbarPages/Connections";
 
 const App = () => {
   return (
@@ -32,6 +33,7 @@ const App = () => {
         <Route path="/History" element={<History/>} />
         <Route path="/Groups" element={<GroupsData/>} />
         <Route path="/Organization" element={<Organization/>} />
+        <Route path="/Connections" element={<Connections/>} />
 
         <Route path="/reset-password/:id/:token" element={<ResetPasswordPage />} />
       </Routes>
