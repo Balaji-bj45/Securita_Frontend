@@ -10,7 +10,6 @@ import ActiveSessions from "./Pages/ActiveSessions";
 import History from "./Pages/History";
 import GroupsData from "./NavbarPages/GroupsData";
 import Organization from "./NavbarPages/Organization";
-import ScanQrPage from "./Pages/ScanQrPage";
 import MfaPage from "./Pages/MfaPage";
 
 const App = () => {
@@ -19,15 +18,13 @@ const App = () => {
       <Routes>
         {/* Default Route */}
         <Route path="*" element={<LoginPage />} />
-        <Route path="mfaPage" element={<MfaPage/>} />
+        <Route path="/mfa-verify/:userId" element={<MfaPage />} />
 
         {/* Other Routes */}
         <Route path="/home-page" element={<MainComp />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/Users" element={<UserListPage />} />
-        <Route path="/mfa-verify/:userId" element={<ScanQrPage />} />
-
 
         {/* Corrected Route for /create-user */}
         <Route path="/create-user" element={<Users />} />

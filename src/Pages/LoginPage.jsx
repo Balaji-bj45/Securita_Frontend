@@ -126,7 +126,7 @@ const LoginPage = () => {
 
         // 4️⃣ Otherwise, login success
         if (data.token) {
-          localStorage.setItem("authToken", res.data.token);
+          localStorage.setItem("authToken", data.token);
 
           localStorage.setItem("role", role);
           toast.success(`Login successful as ${role}`);
