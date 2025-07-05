@@ -19,14 +19,14 @@ const App = () => {
       <Routes>
         {/* Default Route */}
         <Route path="*" element={<LoginPage />} />
-        <Route path="mfaPage" element={<MfaPage/>} />
+        <Route path="/mfa-verify/:userId" element={<MfaPage />} />
 
         {/* Other Routes */}
         <Route path="/home-page" element={<MainComp />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/Users" element={<UserListPage />} />
-        
+
         {/* Corrected Route for /create-user */}
         <Route path="/create-user" element={<Users />} />
         <Route path="/Active-Sessions" element={<ActiveSessions/>} />
@@ -35,7 +35,10 @@ const App = () => {
         <Route path="/Organization" element={<Organization/>} />
         <Route path="/Connections" element={<Connections/>} />
 
-        <Route path="/reset-password/:id/:token" element={<ResetPasswordPage />} />
+        <Route
+          path="/reset-password/:id/:token"
+          element={<ResetPasswordPage />}
+        />
       </Routes>
     </Router>
   );
